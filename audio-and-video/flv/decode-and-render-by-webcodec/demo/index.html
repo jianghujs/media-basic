@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div>
+    <span>FLV流请求地址:</span>
+    <input type="text" value="https://live.nodemedia.cn:8443/live/b480_264.flv" id="href" style="width: 300px">
+    <button id="request" onclick="startRequest()">请求</button>
+    <button onclick="abortRequest()">断开</button>
+    <div>
+        <canvas id="canvas" style="width: 700px;height: 500px"></canvas>
+    </div>
+</div>
+<script src="./flv-decoder.dev.js"></script>
+<script>
+
+    // https://live.nodemedia.cn:8443/live/b480_264.flv
+    // https://live.nodemedia.cn:8443/live/b480_265.flv
+
+    const $canvas = document.getElementById('canvas');
+    let flvDemuxer;
+    let decoder;
+    let abortController;
+    let audioPlayer;
+    let yuvRender;
+
+    function startRequest() {
+        const href = document.getElementById('href').value;
+        if (!href) {
+            return;
+        }
+        flvDemuxer = new FlvDemuxer();
+        decoder = new WcsDecoder();
+        abortController = new AbortController();
+        audioPlayer = new AudioPlayer();
+        yuvRender = new YuvRender({
+            $videoElement: $canvas
+        });
+
+        fetch(href, {signal: abortController.signal}).then((res) => {
+            const reader = res.body.getReader();
+            let fetchNext = async () => {
+
+                let {done, value} = await reader.read();
+
+                if (done) {
+                    console.log('fetch done')
+                } else {
+
+                    flvDemuxer.dispatch(value);
+                    fetchNext();
+                }
+            }
+            fetchNext();
+        })
+
+
+        //
+        flvDemuxer.on('videoExtraData', (envelope) => {
+            decoder.setCodecVideo(envelope.codecId, envelope.extraData);
+        });
+
+        flvDemuxer.on('videoData', (envelope) => {
+            decoder.decodeVideo(envelope.nalu, envelope.isKeyFrame, envelope.timestamp);
+        });
+
+        decoder.on('videoInfo', (info) => {
+            yuvRender.updateVideoInfo(info);
+        })
+
+        decoder.on('videoFrame',(options)=>{
+            yuvRender.render(options);
+        })
+
+    }
+
+    function abortRequest() {
+        if (abortController) {
+            abortController.abort();
+            abortController = null;
+        }
+        if (flvDemuxer) {
+            flvDemuxer.destroy();
+            flvDemuxer = null;
+        }
+
+        if(decoder){
+            decoder.destroy();
+            decoder = null;
+        }
+        if(audioPlayer){
+            audioPlayer.destroy();
+            audioPlayer = null;
+        }
+        if(yuvRender){
+            yuvRender.destroy();
+            yuvRender = null;
+        }
+    }
+</script>
+</body>
+</html>

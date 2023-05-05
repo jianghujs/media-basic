@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>音视频传输-websocket</title>
+    <style>
+        video, canvas {
+            background-color: #e9e9e9;
+            margin: 0 auto;
+            display: block;
+        }
+
+        body {
+            text-align: center;
+        }
+
+        video {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<canvas width="320px" height="240px"></canvas>
+<video src="" width="320px" height="240px" controls muted></video>
+<button type="button" onclick="start()">开始</button>
+<button type="button" onclick="stop()">关闭</button>
+
+<script src="./index.js"></script>
+<script>
+    let demoPlayer = null;
+
+    function start() {
+        let video = document.querySelector('video');
+        let canvas = document.querySelector('canvas');
+        let ctx = canvas.getContext('2d');
+        demoPlayer = new DemoPlayer({
+            video,
+            wsHref: 'ws://localhost:3001',
+            ctx
+        });
+
+        demoPlayer.startPush();
+    }
+
+    function stop() {
+        if (demoPlayer) {
+            demoPlayer.destroy();
+            demoPlayer = null;
+        }
+    }
+</script>
+</body>
+</html>

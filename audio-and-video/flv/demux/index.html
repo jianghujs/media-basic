@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div>
+    <span>FLV流请求地址:</span>
+    <input type="text" value="https://live.nodemedia.cn:8443/live/b480_264.flv" id="href" style="width: 300px">
+    <button id="request" onclick="startRequest()">请求</button>
+    <button onclick="abortRequest()">断开</button>
+</div>
+<script src="./flv-demuxer.js"></script>
+<script>
+
+    // https://live.nodemedia.cn:8443/live/b480_264.flv
+    // https://live.nodemedia.cn:8443/live/b480_265.flv
+    let flvDemuxer;
+    let abortController;
+
+    function startRequest() {
+        const href = document.getElementById('href').value;
+        if (!href) {
+            return;
+        }
+        flvDemuxer = new FlvDemuxer();
+        abortController = new AbortController();
+
+        fetch(href, {signal: abortController.signal}).then((res) => {
+            const reader = res.body.getReader();
+            let fetchNext = async () => {
+
+                let {done, value} = await reader.read();
+
+                if (done) {
+                    console.log('fetch done')
+                } else {
+
+                    flvDemuxer.dispatch(value);
+                    fetchNext();
+                }
+            }
+            fetchNext();
+        })
+    }
+
+    function abortRequest() {
+        if (abortController) {
+            abortController.abort();
+            abortController = null;
+        }
+        if(flvDemuxer){
+            flvDemuxer.destroy();
+            flvDemuxer = null;
+        }
+    }
+</script>
+</body>
+</html>

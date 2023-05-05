@@ -1,0 +1,13 @@
+{
+  "name": "demo-3",
+  "version": "1.0.0",
+  "scripts": {
+    "dev:https": "node server.js",
+    "dev": "node server-http.js"
+
+  },
+  "dependencies": {
+    "https": "^1.0.0",
+    "ws": "^7.1.1"
+  }
+}

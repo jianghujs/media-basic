@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>音频采集-麦克风</title>
+    <script src="./recorder.js"></script>
+</head>
+<body>
+<div>
+    <button onclick="startRecord()">录音</button>
+    <button onclick="destroyRecord()">关闭</button>
+</div>
+<script>
+    let recorder = null;
+
+    function startRecord() {
+        recorder = new Recorder({
+            onData: (data) => {
+                console.log('data', data);
+            }
+        });
+
+    }
+
+    function destroyRecord() {
+        if (recorder) {
+            recorder.destroy();
+        }
+    }
+</script>
+</body>
+</html>

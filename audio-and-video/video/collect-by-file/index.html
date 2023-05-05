@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>视频采集-文件</title>
+</head>
+<body>
+<p style="text-align: center;color: red;font-size: 20px">点击屏幕进行视频采集</p>
+
+<div style="margin-top:10px;display: flex;align-items: center;justify-content: center">
+    <div>
+        <div>canvas 采集到的数据</div>
+        <canvas id="canvas" height=460 width=640></canvas>
+    </div>
+    <div>
+        <div>源视频</div>
+        <video src="./video.mp4" height=460 width=640 id="srcVideo" autoplay=true></video>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const srcvideo = document.getElementById("srcVideo")
+    //
+    document.body.onmousedown = e => {
+        srcvideo.play()
+        playCanvas(srcvideo, ctx)
+    }
+
+
+    function playCanvas(srcVideo, ctx) {
+        //
+        ctx.drawImage(srcVideo, 0, 0, 640, 360)
+        // 你希望执行一个动画
+        requestAnimationFrame(() => {
+            // 递归调用
+            playCanvas(srcVideo, ctx)
+        })
+    }
+</script>
+</body>
+</html>

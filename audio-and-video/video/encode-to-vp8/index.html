@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>视频编码-vp8</title>
+    <style>
+        canvas {
+            padding: 10px;
+            background: gold;
+        }
+
+        button {
+            background-color: #555555;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            width: 150px;
+            text-align: center;
+            display: block;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+<canvas id="src" width="640" height="480"></canvas>
+<button onclick="playPause()">Pause</button>
+<canvas id="dst" width="640" height="480"></canvas>
+<script>
+    <!--     vp8 编码格式 -->
+    let codec_string = "vp8";
+    let keep_going = true;
+
+    function playPause() {
+        keep_going = !keep_going;
+        let btn = document.querySelector("button");
+        if (keep_going) {
+            btn.innerText = "Pause";
+        } else {
+            btn.innerText = "Play";
+        }
+    }
+
+    function delay(time_ms) {
+        return new Promise((resolve) => {
+            setTimeout(resolve, time_ms);
+        });
+    }
+
+
+    async function startDrawing() {
+        let cnv = document.getElementById("src");
+        var ctx = cnv.getContext('2d', {alpha: false});
+
+        ctx.fillStyle = "white";
+        let width = cnv.width;
+        let height = cnv.height;
+        let cx = width / 2;
+        let cy = height / 2;
+        let r = Math.min(width, height) / 5;
+        let drawOneFrame = function (time) {
+            let angle = Math.PI * 2 * (time / 5000);
+            let scale = 1 + 0.3 * Math.sin(Math.PI * 2 * (time / 7000));
+            ctx.save();
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+            ctx.scale(scale, scale);
+
+            ctx.font = '30px Verdana';
+            ctx.fillStyle = 'black';
+            const text = "😊📹📷Hello world 🎥🎞️😊";
+            const size = ctx.measureText(text).width;
+            ctx.fillText(text, -size / 2, 0);
+            ctx.restore();
+            window.requestAnimationFrame(drawOneFrame);
+        }
+        window.requestAnimationFrame(drawOneFrame);
+    }
+
+
+    function captureAndEncode(processChunk) {
+        let cnv = document.getElementById("src");
+        let fps = 25;
+        let pending_outputs = 0;
+        let frame_counter = 0;
+        // get canvas stream
+        let stream = cnv.captureStream(fps);
+        // get video track
+        const track = stream.getVideoTracks()[0]
+        //  media processor
+        const media_processor = new MediaStreamTrackProcessor(track);
+        // media processor reader
+        const reader = media_processor.readable.getReader();
+
+        const init = {
+            //
+            output: (chunk, config) => {
+                pending_outputs--;
+                processChunk(chunk, config);
+            },
+            //
+            error: (e) => {
+                console.log(e.message);
+                keep_going = false;
+            }
+        };
+
+        const config = {
+            codec: codec_string,
+            width: cnv.width,
+            height: cnv.height,
+            //hardwareAcceleration: "allow",
+            bitrate: 1000000,
+            framerate: fps,
+        };
+        // video encoder
+        let encoder = new VideoEncoder(init);
+        // encoder config
+        encoder.configure(config);
+
+        async function readFrame() {
+            //
+            const result = await reader.read();
+            let frame = result.value;
+
+            // Too many frames in flight, encoder is overwhelmed
+            // let's drop this frame.
+            if (keep_going && pending_outputs <= 5) {
+                frame_counter++;
+                pending_outputs++;
+                const insert_keyframe = false;// = (frame_counter % 30) == 0;
+                encoder.encode(frame, {keyFrame: insert_keyframe});
+                frame.close();
+            } else {
+                frame.close();
+            }
+
+            setTimeout(readFrame, 1);
+        };
+
+        readFrame();
+    }
+
+
+    function startDecodingAndRendering() {
+        let cnv = document.getElementById("dst");
+        let ctx = cnv.getContext("2d", {alpha: false});
+        let ready_frames = [];
+        let underflow = true;
+        let time_base = 0;
+
+        function calculateTimeTillNextFrame(timestamp) {
+            if (time_base == 0)
+                time_base = performance.now();
+            let media_time = performance.now() - time_base;
+            return Math.max(0, (timestamp / 1000) - media_time);
+        }
+
+        async function renderFrame() {
+            if (ready_frames.length == 0) {
+                underflow = true;
+                return;
+            }
+            let frame = ready_frames.shift();
+            underflow = false;
+
+            // Based on the frame's timestamp calculate how much of real time waiting
+            // is needed before showing the next frame.
+            let time_till_next_frame = calculateTimeTillNextFrame(frame.timestamp);
+            await delay(time_till_next_frame);
+            ctx.drawImage(frame, 0, 0);
+            frame.close();
+
+            // Immediately schedule rendering of the next frame
+            setTimeout(renderFrame, 0);
+        }
+
+        function handleFrame(frame) {
+            ready_frames.push(frame);
+            if (underflow) {
+                underflow = false;
+                setTimeout(renderFrame, 0);
+            }
+        }
+
+        const init = {
+            output: handleFrame,
+            error: (e) => {
+                console.log(e.message);
+            }
+        };
+
+        let decoder = new VideoDecoder(init);
+        return decoder;
+    }
+
+    function main() {
+        if (!("VideoEncoder" in window)) {
+            document.body.innerHTML = "<h1>WebCodecs API is not supported.</h1>";
+            return;
+        }
+
+        startDrawing();
+        let decoder = startDecodingAndRendering();
+        captureAndEncode((chunk, md) => {
+            let config = md.decoderConfig ?? md;
+            if (config && decoder.state == 'unconfigured') {
+                console.log("decoder reconfig");
+                decoder.configure(config);
+            }
+
+            decoder.decode(chunk);
+        });
+    }
+
+    document.body.onload = main;
+</script>
+
+</body>
+</html>

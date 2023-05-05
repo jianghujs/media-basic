@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>音频编码-mp3</title>
+</head>
+<body>
+<p>编码文件：./media/Left44100.wav</p>
+<button onclick="start()">开始编码并播放</button>
+<button onclick="downloadFile()">下载</button>
+<script src="./lame.all.js"></script>
+<script src="./mp3-encode.js"></script>
+<script>
+    var wavFile = "./media/Left44100.wav";
+    var fileBlob = null;
+
+    function start() {
+        var request = new XMLHttpRequest();
+        request.open("GET", wavFile, true);
+        request.responseType = "arraybuffer";
+
+        // Our asynchronous callback
+        request.onload = function () {
+            var audioData = request.response;
+            // wav header
+            var wav = lamejs.WavHeader.readHeader(new DataView(audioData));
+            console.log('wav:', wav);
+            //
+            var samples = new Int16Array(audioData, wav.dataOffset, wav.dataLen / 2);
+            //
+            fileBlob = encodeMono(wav.channels, wav.sampleRate, samples);
+        };
+        request.send();
+    }
+
+    function downloadFile() {
+        if (fileBlob) {
+            try {
+                const oa = document.createElement('a');
+                oa.href = window.URL.createObjectURL(fileBlob);
+                oa.download = Date.now() + '.mp3';
+                oa.click();
+            } catch (e) {
+                console.error('download', e);
+            }
+        }
+    }
+
+
+</script>
+</body>
+</html>

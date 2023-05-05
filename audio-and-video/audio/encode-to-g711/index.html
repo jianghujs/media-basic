@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>音频编码-g711a/u</title>
+    <script src="./recorder.js"></script>
+    <script src="./g711a(u)-encode.js"></script>
+</head>
+<body>
+<p id="tips"></p>
+<button onclick="start()">开始录音</button>
+<button onclick="stopAndSave('a')">结束录音（下载g711a）</button>
+<button onclick="stopAndSave('u')">结束录音（下载g711u）</button>
+<script>
+    const $tips = document.getElementById('tips');
+    let recorder = null;
+    let bufferList = [];
+
+    function start() {
+        recorder = new Recorder({
+            onData: (buffer) => {
+                // 采集到的音频数据
+                bufferList.push(buffer);
+            }
+        })
+        $tips.innerText = '正在录音...';
+    }
+
+    function stopAndSave(type) {
+        let result = null;
+        let suffix = '';
+        recorder.destroy();
+        recorder = null;
+        if (type === 'a') {
+            result = g711aEncoder(bufferList);
+            suffix = '.g711a';
+        } else if (type === 'u') {
+            result = g711uEncoder(bufferList);
+            suffix = '.g711u';
+        } else {
+            console.error('type error');
+            return;
+        }
+
+        $tips.innerText = '录音结束，正在下载。。。。。。';
+
+
+        if (result) {
+            const blob = new Blob([result]);
+            try {
+                const oa = document.createElement('a');
+                oa.href = window.URL.createObjectURL(blob);
+                oa.download = Date.now() + suffix;
+                oa.click();
+                $tips.innerText = '';
+            } catch (e) {
+                console.error('download', e);
+            }
+        }
+    }
+</script>
+</body>
+</html>

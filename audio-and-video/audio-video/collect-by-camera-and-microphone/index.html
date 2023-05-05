@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>视频采集-摄像头+麦克风</title>
+</head>
+<body>
+<div style="margin-top:10px;display: flex;align-items: center;justify-content: center">
+    <div>
+        <div>采集到的</div>
+        <video height=460 width=640 id="srcVideo" autoplay=true></video>
+    </div>
+</div>
+<script>
+
+    navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: true
+    }).then(function (mediaStream) {
+        const srcVideo = document.getElementById("srcVideo")
+        srcVideo.srcObject = mediaStream;
+        srcVideo.play()
+    })
+
+</script>
+</body>
+</html>

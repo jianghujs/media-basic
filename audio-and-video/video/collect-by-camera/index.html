@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>视频采集-摄像头</title>
+</head>
+<body>
+<div style="margin-top:10px;display: flex;align-items: center;justify-content: center">
+    <div>
+        <div>canvas 采集到的数据</div>
+        <canvas id="canvas" height=460 width=640></canvas>
+    </div>
+    <div>
+        <div>摄像头采集到的</div>
+        <video height=460 width=640 id="srcVideo" autoplay=true></video>
+    </div>
+</div>
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    navigator.mediaDevices.getUserMedia({
+        video: true
+    }).then(function(mediaStream) {
+        const srcVideo = document.getElementById("srcVideo")
+        srcVideo.srcObject = mediaStream;
+        srcVideo.play()
+        playCanvas(srcVideo, ctx)
+    })
+
+
+    function playCanvas(srcVideo, ctx) {
+
+        ctx.drawImage(srcVideo, 0, 0, 640, 360)
+
+        requestAnimationFrame(() => {
+            playCanvas(srcVideo, ctx)
+        })
+    }
+</script>
+</body>
+</html>

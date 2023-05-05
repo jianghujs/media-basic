@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div>
+    <span>FLV流请求地址:</span>
+    <input type="text" value="https://live.nodemedia.cn:8443/live/b480_264.flv" id="href" style="width: 300px">
+    <button id="request" onclick="startRequest()">请求</button>
+    <button onclick="abortRequest()">断开</button>
+    <div>
+        <video id="video" style="width: 700px;height: 500px"></video>
+    </div>
+</div>
+<script src="./flv-decoder.dev.js"></script>
+<script>
+
+    // https://live.nodemedia.cn:8443/live/b480_264.flv
+    // https://live.nodemedia.cn:8443/live/b480_265.flv
+
+    const $video = document.getElementById('video');
+    let flvDemuxer;
+    let decoder;
+    let abortController;
+    let audioPlayer;
+    let bufferList = [];
+    let loopInterval = null;
+
+    function startRequest() {
+        const href = document.getElementById('href').value;
+        if (!href) {
+            return;
+        }
+        flvDemuxer = new FlvDemuxer();
+        decoder = new MseDecoder({
+            $videoElement: $video
+        });
+        abortController = new AbortController();
+
+        fetch(href, {signal: abortController.signal}).then((res) => {
+            const reader = res.body.getReader();
+            let fetchNext = async () => {
+
+                let {done, value} = await reader.read();
+
+                if (done) {
+                    console.log('fetch done')
+                } else {
+
+                    flvDemuxer.dispatch(value);
+                    fetchNext();
+                }
+            }
+            fetchNext();
+        })
+
+
+        //
+        flvDemuxer.on('videoExtraData', (envelope) => {
+            decoder.setCodecVideo(envelope.codecId, envelope.extraData);
+        });
+
+        flvDemuxer.on('videoData', (envelope) => {
+            bufferList.push(envelope);
+        });
+
+        $video.addEventListener('canplay', () => {
+            console.log('canplay')
+            $video.play();
+        })
+        loopInterval = setInterval(() => {
+            if (bufferList.length > 0) {
+                const buffer = bufferList.shift()
+                decoder.decodeVideo(buffer.nalu, buffer.isKeyFrame, buffer.timestamp);
+            }
+        }, 10)
+    }
+
+    function abortRequest() {
+        if (abortController) {
+            abortController.abort();
+            abortController = null;
+        }
+        if (flvDemuxer) {
+            flvDemuxer.destroy();
+            flvDemuxer = null;
+        }
+
+        if (decoder) {
+            decoder.destroy();
+            decoder = null;
+        }
+
+        if(loopInterval){
+            clearInterval(loopInterval);
+            loopInterval = null;
+        }
+        bufferList = [];
+    }
+</script>
+</body>
+</html>

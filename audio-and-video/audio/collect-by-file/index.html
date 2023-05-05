@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>音频采集-文件</title>
+</head>
+<body>
+<div>
+    <button onclick="start()">采集</button>
+    <button onclick="destroy()">关闭</button>
+</div>
+<script src="./recorder.js"></script>
+<script>
+    let recorder = null;
+
+    function start() {
+        recorder = new Recorder({
+            url: './viper.mp3'
+        });
+    }
+
+    function destroy(){
+        if (recorder) {
+            recorder.destroy();
+        }
+    }
+</script>
+</body>
+</html>
